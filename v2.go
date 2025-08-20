@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
 	"strings"
 
 	"github.com/golang-jwt/jwt"
@@ -150,15 +151,18 @@ func (asn *AppStoreServerNotification) parseJwtSignedPayload(payload string) {
 	asn.TransactionInfo = transactionInfo
 
 	// renewal info
-	renewalInfo := &RenewalInfo{}
-	payload = asn.Payload.Data.SignedRenewalInfo
-	_, err = jwt.ParseWithClaims(payload, renewalInfo, func(token *jwt.Token) (interface{}, error) {
-		return asn.extractPublicKeyFromPayload(payload)
-	})
-	if err != nil {
-		panic(err)
+	if payload := asn.Payload.Data.SignedRenewalInfo; payload != "" {
+		renewalInfo := &RenewalInfo{}
+		_, err := jwt.ParseWithClaims(payload, renewalInfo, func(token *jwt.Token) (interface{}, error) {
+			return asn.extractPublicKeyFromPayload(payload)
+		})
+		if err != nil {
+			// ログ出力だけしてスルー or エラーにする
+			log.Printf("Failed to parse SignedRenewalInfo: %v", err)
+		} else {
+			asn.RenewalInfo = renewalInfo
+		}
 	}
-	asn.RenewalInfo = renewalInfo
 
 	// valid request
 	asn.IsValid = true
